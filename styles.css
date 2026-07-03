@@ -1,12 +1,12 @@
 :root {
   --paper: #FFFFFF;
   --ink: #0A0A0A;
-  --paper-warm: #F5EFE9;
+  --paper-warm: #FFFFFF;
   --accent-hot: #EE4D1E;
   --accent-cold: #2E7FB8;
   --accent-neutral: #8A8A8A;
   --muted: rgba(0, 0, 0, .55);
-  --muted-dark: rgba(245, 239, 233, .55);
+  --muted-dark: rgba(255, 255, 255, .55);
 
   --font: "Google Sans Flex", "Google Sans Code", "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --pad-x: clamp(1.25rem, 4vw, 3.5rem);
