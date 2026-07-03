@@ -89,7 +89,16 @@ button, select {
   font-weight: 700;
 }
 
-.half__place {
+.place-control {
+  position: relative;
+}
+
+.place-name {
+  display: block;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
   font-size: 1.1rem;
   font-weight: 400;
   text-align: right;
@@ -97,6 +106,90 @@ button, select {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 50vw;
+  padding: 0;
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+.place-name:hover,
+.place-name:focus-visible {
+  opacity: 0.7;
+}
+
+.place-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.6rem;
+  z-index: 20;
+  width: max(220px, min(320px, calc(100vw - 2 * var(--pad-x))));
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid rgba(0, 0, 0, .12);
+  border-radius: 10px;
+  padding: 0.75rem;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+  text-align: left;
+}
+
+.place-input {
+  width: 100%;
+  font: inherit;
+  font-size: 0.95rem;
+  color: inherit;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, .15);
+  padding: 0.3rem 0.1rem;
+  outline: none;
+}
+
+.place-input:focus {
+  border-bottom-color: var(--ink);
+}
+
+.place-results {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.place-result {
+  padding: 0.45rem 0.3rem;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.place-result.is-active,
+.place-result:hover {
+  background: rgba(0, 0, 0, .08);
+}
+
+.place-panel__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.place-status {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.place-panel__footer .text-link {
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.place-panel__footer .text-link:hover,
+.place-panel__footer .text-link:focus-visible {
+  opacity: 1;
 }
 
 .half__body {
@@ -324,8 +417,12 @@ button, select {
 
 /* Mobile */
 @media (max-width: 480px) {
-  .half__place {
+  .place-name {
     max-width: 40vw;
+  }
+
+  .place-panel {
+    right: 0;
   }
 
   .badge {

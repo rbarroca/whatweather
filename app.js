@@ -5,6 +5,7 @@
   const MIN_YEAR = 1960;
   const CURRENT_YEAR = new Date().getFullYear();
   const MAX_HISTORY_YEAR = CURRENT_YEAR - 1;
+  const LOCATION_STORAGE_KEY = "ww_saved_city";
 
   const els = {
     placeName: document.getElementById("placeName"),
@@ -26,6 +27,13 @@
     shareBtn: document.getElementById("shareBtn"),
     shareStoryBtn: document.getElementById("shareStoryBtn"),
     shareNotice: document.getElementById("shareNotice"),
+    placeControl: document.getElementById("placeControl"),
+    placeButton: document.getElementById("placeButton"),
+    placePanel: document.getElementById("placePanel"),
+    placeInput: document.getElementById("placeInput"),
+    placeResults: document.getElementById("placeResults"),
+    placeStatus: document.getElementById("placeStatus"),
+    useLocationBtn: document.getElementById("useLocationBtn"),
   };
 
   const state = {
@@ -125,31 +133,96 @@
     return res.json();
   }
 
+  // --- Location: saved city, GPS/IP cascade, and staleness guarding ---
+  //
+  // Multiple async paths can resolve a location (GPS, two IP providers,
+  // Lisbon, or the user manually picking a city mid-cascade). Each attempt
+  // captures the token active when it started and checks it's still current
+  // before writing to state/DOM, so a slow GPS fix can't clobber a location
+  // the user already picked in the meantime.
+  let activeLocationToken = 0;
+
+  function beginLocationUpdate() {
+    activeLocationToken += 1;
+    return activeLocationToken;
+  }
+
+  function isStale(token) {
+    return token !== activeLocationToken;
+  }
+
+  function setPlaceName(name, approximate) {
+    els.placeName.textContent = approximate ? `~ ${name}` : name;
+  }
+
+  function displayedPlaceName() {
+    return (els.placeName.textContent || "").replace(/^~\s*/, "");
+  }
+
+  function getSavedCity() {
+    try {
+      const raw = localStorage.getItem(LOCATION_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.name === "string" && Number.isFinite(parsed.lat) && Number.isFinite(parsed.lon)) {
+        return parsed;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveCity(loc) {
+    try {
+      localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(loc));
+    } catch (e) {
+      /* localStorage unavailable (private mode, sandboxed embeds, etc.) */
+    }
+  }
+
+  function clearSavedCity() {
+    try {
+      localStorage.removeItem(LOCATION_STORAGE_KEY);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
   function locate() {
+    const token = beginLocationUpdate();
     setNotice(els.todayNotice, null);
+
+    const saved = getSavedCity();
+    if (saved) {
+      useSavedCity(saved);
+      return;
+    }
+
     els.placeName.textContent = "Locating…";
 
     if (!("geolocation" in navigator)) {
-      tryIpLocation();
+      tryIpLocation(token);
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (isStale(token)) return;
         const lat = Number(pos.coords.latitude.toFixed(3));
         const lon = Number(pos.coords.longitude.toFixed(3));
         state.lat = lat;
         state.lon = lon;
-        resolvePlaceName(lat, lon);
+        resolvePlaceName(lat, lon, token);
         loadToday();
         loadHistory();
       },
       () => {
         // Desktop browsers often can't get a GPS/Wi-Fi fix in time (or the user
         // declined). Either way, an approximate IP-based location beats Lisbon.
-        tryIpLocation();
+        tryIpLocation(token);
       },
-      { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 600000 }
     );
   }
 
@@ -162,13 +235,14 @@
     return loc;
   }
 
-  async function tryIpLocation() {
+  async function tryIpLocation(token) {
     try {
       const loc = await fetchIpLocation("https://ipwho.is/", (d) =>
         d && d.success === true && Number.isFinite(d.latitude) && Number.isFinite(d.longitude)
           ? { lat: d.latitude, lon: d.longitude, city: d.city }
           : null
       );
+      if (isStale(token)) return;
       useIpLocation(loc);
       return;
     } catch (e) {
@@ -181,19 +255,29 @@
           ? { lat: d.latitude, lon: d.longitude, city: d.city }
           : null
       );
+      if (isStale(token)) return;
       useIpLocation(loc);
       return;
     } catch (e) {
       /* both IP providers failed */
     }
 
+    if (isStale(token)) return;
     useFallback("Couldn't detect your location.");
   }
 
   function useIpLocation(loc) {
     state.lat = Number(loc.lat.toFixed(3));
     state.lon = Number(loc.lon.toFixed(3));
-    els.placeName.textContent = loc.city || "your location";
+    setPlaceName(loc.city || "your location", true);
+    loadToday();
+    loadHistory();
+  }
+
+  function useSavedCity(loc) {
+    state.lat = loc.lat;
+    state.lon = loc.lon;
+    setPlaceName(loc.name, false);
     loadToday();
     loadHistory();
   }
@@ -201,7 +285,7 @@
   function useFallback(reason) {
     state.lat = FALLBACK.lat;
     state.lon = FALLBACK.lon;
-    els.placeName.textContent = FALLBACK.name;
+    setPlaceName(FALLBACK.name, false);
     setNotice(els.todayNotice, retryButton(`${reason} Using ${FALLBACK.name} (approximate).`, () => {
       locate();
     }));
@@ -209,19 +293,181 @@
     loadHistory();
   }
 
-  async function resolvePlaceName(lat, lon) {
+  async function resolvePlaceName(lat, lon, token) {
     try {
       const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&accept-language=en`;
       const data = await fetchJSON(url);
+      if (isStale(token)) return;
       const addr = data.address || {};
       const name =
         addr.city || addr.town || addr.village || addr.municipality || addr.county ||
         (data.display_name ? data.display_name.split(",")[0] : null) ||
         "your location";
-      els.placeName.textContent = name;
+      setPlaceName(name, false);
     } catch (e) {
-      els.placeName.textContent = "your location";
+      if (isStale(token)) return;
+      setPlaceName("your location", false);
     }
+  }
+
+  // --- City search (manual correction) ---
+
+  async function searchCities(query) {
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`;
+    const data = await fetchJSON(url);
+    return Array.isArray(data.results) ? data.results : [];
+  }
+
+  function selectCity(result) {
+    beginLocationUpdate(); // invalidate any auto-detect cascade still in flight
+    const lat = Number(result.latitude.toFixed(3));
+    const lon = Number(result.longitude.toFixed(3));
+    state.lat = lat;
+    state.lon = lon;
+    setPlaceName(result.name, false);
+    saveCity({ name: result.name, lat, lon, country: result.country || "" });
+    closePlacePanel();
+    els.placeButton.focus();
+    loadToday();
+    loadHistory();
+  }
+
+  function useMyLocation() {
+    clearSavedCity();
+    closePlacePanel();
+    els.placeButton.focus();
+    locate();
+  }
+
+  let placeSearchResults = [];
+  let placeActiveResultIndex = -1;
+  let placeSearchTimer = null;
+  let placeSearchSeq = 0;
+
+  function setPlaceStatus(text) {
+    els.placeStatus.textContent = text || "";
+  }
+
+  function renderPlaceResults(results) {
+    placeSearchResults = results;
+    placeActiveResultIndex = -1;
+    els.placeInput.removeAttribute("aria-activedescendant");
+    els.placeResults.innerHTML = "";
+    results.forEach((r, i) => {
+      const li = document.createElement("li");
+      li.className = "place-result";
+      li.id = `place-result-${i}`;
+      li.setAttribute("role", "option");
+      li.setAttribute("aria-selected", "false");
+      li.textContent = [r.name, r.admin1, r.country].filter(Boolean).join(", ");
+      li.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        selectCity(r);
+      });
+      els.placeResults.appendChild(li);
+    });
+  }
+
+  function setActivePlaceResult(index) {
+    const items = els.placeResults.querySelectorAll(".place-result");
+    items.forEach((el, i) => {
+      const active = i === index;
+      el.classList.toggle("is-active", active);
+      el.setAttribute("aria-selected", active ? "true" : "false");
+    });
+    placeActiveResultIndex = index;
+    if (index >= 0 && items[index]) {
+      els.placeInput.setAttribute("aria-activedescendant", items[index].id);
+      items[index].scrollIntoView({ block: "nearest" });
+    } else {
+      els.placeInput.removeAttribute("aria-activedescendant");
+    }
+  }
+
+  function openPlacePanel() {
+    els.placePanel.hidden = false;
+    els.placeButton.setAttribute("aria-expanded", "true");
+    els.placeInput.value = "";
+    renderPlaceResults([]);
+    setPlaceStatus("");
+    els.placeInput.focus();
+    document.addEventListener("pointerdown", handlePlaceOutsideClick, true);
+  }
+
+  function closePlacePanel() {
+    if (els.placePanel.hidden) return;
+    els.placePanel.hidden = true;
+    els.placeButton.setAttribute("aria-expanded", "false");
+    document.removeEventListener("pointerdown", handlePlaceOutsideClick, true);
+    if (placeSearchTimer) clearTimeout(placeSearchTimer);
+  }
+
+  function handlePlaceOutsideClick(e) {
+    if (!els.placeControl.contains(e.target)) {
+      closePlacePanel();
+    }
+  }
+
+  function handlePlaceInput() {
+    const query = els.placeInput.value.trim();
+    if (placeSearchTimer) clearTimeout(placeSearchTimer);
+
+    if (query.length < 2) {
+      renderPlaceResults([]);
+      setPlaceStatus("");
+      return;
+    }
+
+    setPlaceStatus("Searching…");
+    placeSearchTimer = setTimeout(async () => {
+      const seq = ++placeSearchSeq;
+      try {
+        const results = await searchCities(query);
+        if (seq !== placeSearchSeq) return;
+        if (results.length === 0) {
+          setPlaceStatus("No city found.");
+          renderPlaceResults([]);
+        } else {
+          setPlaceStatus("");
+          renderPlaceResults(results);
+        }
+      } catch (e) {
+        if (seq !== placeSearchSeq) return;
+        setPlaceStatus("Couldn't search right now.");
+        renderPlaceResults([]);
+      }
+    }, 300);
+  }
+
+  function handlePlaceInputKeydown(e) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (placeSearchResults.length === 0) return;
+      setActivePlaceResult(Math.min(placeActiveResultIndex + 1, placeSearchResults.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (placeSearchResults.length === 0) return;
+      setActivePlaceResult(Math.max(placeActiveResultIndex - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const idx = placeActiveResultIndex >= 0 ? placeActiveResultIndex : 0;
+      if (placeSearchResults[idx]) selectCity(placeSearchResults[idx]);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      closePlacePanel();
+      els.placeButton.focus();
+    }
+  }
+
+  function initPlaceSearch() {
+    els.placeButton.addEventListener("click", () => {
+      if (els.placePanel.hidden) openPlacePanel();
+      else closePlacePanel();
+    });
+
+    els.placeInput.addEventListener("input", handlePlaceInput);
+    els.placeInput.addEventListener("keydown", handlePlaceInputKeydown);
+    els.useLocationBtn.addEventListener("click", useMyLocation);
   }
 
   async function loadToday() {
@@ -420,9 +666,8 @@
     const halfH = size.h / 2;
     const marginX = 90;
 
-    const place = els.placeName.textContent && els.placeName.textContent !== "—"
-      ? els.placeName.textContent
-      : "your location";
+    const cleanPlace = displayedPlaceName();
+    const place = cleanPlace && cleanPlace !== "—" ? cleanPlace : "your location";
 
     drawCardHalf(ctx, {
       top: 0,
@@ -496,7 +741,7 @@
 
     try {
       const blob = await generateShareCard(format);
-      const place = els.placeName.textContent || "location";
+      const place = displayedPlaceName() || "location";
       const fileName = `whatweather-${slugify(place)}-${state.year}.png`;
       const file = new File([blob], fileName, { type: "image/png" });
 
@@ -577,5 +822,6 @@
 
   initYearControls();
   initShare();
+  initPlaceSearch();
   locate();
 })();

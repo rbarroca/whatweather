@@ -54,7 +54,19 @@
     <div class="half__inner">
       <header class="half__header">
         <h2 class="half__label">Today</h2>
-        <div class="half__place" id="placeName">—</div>
+        <div class="place-control" id="placeControl">
+          <button class="place-name" id="placeButton" aria-haspopup="listbox" aria-expanded="false" aria-label="Change location">
+            <span id="placeName">—</span>
+          </button>
+          <div class="place-panel" id="placePanel" hidden>
+            <input type="text" class="place-input" id="placeInput" placeholder="Search city…" aria-label="Search city" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="placeResults">
+            <ul class="place-results" id="placeResults" role="listbox" aria-label="City results"></ul>
+            <div class="place-panel__footer">
+              <span class="place-status" id="placeStatus" aria-live="polite"></span>
+              <button class="text-link" id="useLocationBtn" type="button">use my location</button>
+            </div>
+          </div>
+        </div>
       </header>
 
       <div class="half__body">
