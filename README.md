@@ -1,4 +1,4 @@
-# what.weather
+# what weather
 
 A single page that compares today's temperature at your location with the temperature on the same calendar day in another year.
 

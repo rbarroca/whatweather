@@ -130,7 +130,7 @@
     els.placeName.textContent = "Locating…";
 
     if (!("geolocation" in navigator)) {
-      useFallback("Location unavailable.");
+      tryIpLocation();
       return;
     }
 
@@ -144,21 +144,65 @@
         loadToday();
         loadHistory();
       },
-      (err) => {
-        let reason = "Location unavailable.";
-        if (err && err.code === 1) reason = "Location blocked in browser settings.";
-        else if (err && err.code === 3) reason = "Location request timed out.";
-        useFallback(reason);
+      () => {
+        // Desktop browsers often can't get a GPS/Wi-Fi fix in time (or the user
+        // declined). Either way, an approximate IP-based location beats Lisbon.
+        tryIpLocation();
       },
-      { timeout: 8000 }
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 }
     );
+  }
+
+  async function fetchIpLocation(url, extract) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`IP lookup failed: ${res.status}`);
+    const data = await res.json();
+    const loc = extract(data);
+    if (!loc) throw new Error("IP lookup returned no usable location");
+    return loc;
+  }
+
+  async function tryIpLocation() {
+    try {
+      const loc = await fetchIpLocation("https://ipwho.is/", (d) =>
+        d && d.success === true && Number.isFinite(d.latitude) && Number.isFinite(d.longitude)
+          ? { lat: d.latitude, lon: d.longitude, city: d.city }
+          : null
+      );
+      useIpLocation(loc);
+      return;
+    } catch (e) {
+      /* try the secondary IP provider before giving up */
+    }
+
+    try {
+      const loc = await fetchIpLocation("https://ipapi.co/json/", (d) =>
+        d && !d.error && Number.isFinite(d.latitude) && Number.isFinite(d.longitude)
+          ? { lat: d.latitude, lon: d.longitude, city: d.city }
+          : null
+      );
+      useIpLocation(loc);
+      return;
+    } catch (e) {
+      /* both IP providers failed */
+    }
+
+    useFallback("Couldn't detect your location.");
+  }
+
+  function useIpLocation(loc) {
+    state.lat = Number(loc.lat.toFixed(3));
+    state.lon = Number(loc.lon.toFixed(3));
+    els.placeName.textContent = loc.city || "your location";
+    loadToday();
+    loadHistory();
   }
 
   function useFallback(reason) {
     state.lat = FALLBACK.lat;
     state.lon = FALLBACK.lon;
     els.placeName.textContent = FALLBACK.name;
-    setNotice(els.todayNotice, retryButton(`${reason} Using ${FALLBACK.name}.`, () => {
+    setNotice(els.todayNotice, retryButton(`${reason} Using ${FALLBACK.name} (approximate).`, () => {
       locate();
     }));
     loadToday();
@@ -464,7 +508,7 @@
         try {
           await navigator.share({
             files: [file],
-            title: "what.weather",
+            title: "what weather",
             text: shareText,
             url: "https://whatweather.xyz",
           });
