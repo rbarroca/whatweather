@@ -24,8 +24,16 @@
     randomYear: document.getElementById("randomYear"),
     badge: document.getElementById("diffBadge"),
     diffValue: document.getElementById("diffValue"),
+    shareControl: document.getElementById("shareControl"),
     shareBtn: document.getElementById("shareBtn"),
-    shareStoryBtn: document.getElementById("shareStoryBtn"),
+    sharePanel: document.getElementById("sharePanel"),
+    shareFormats: document.getElementById("shareFormats"),
+    shareFormatPost: document.getElementById("shareFormatPost"),
+    shareFormatStory: document.getElementById("shareFormatStory"),
+    shareActions: document.getElementById("shareActions"),
+    saveImageBtn: document.getElementById("saveImageBtn"),
+    copyLinkBtn: document.getElementById("copyLinkBtn"),
+    sharePanelStatus: document.getElementById("sharePanelStatus"),
     shareNotice: document.getElementById("shareNotice"),
     placeControl: document.getElementById("placeControl"),
     placeButton: document.getElementById("placeButton"),
@@ -727,34 +735,102 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  function setShareBusy(busy) {
-    els.shareBtn.disabled = busy;
-    els.shareStoryBtn.disabled = busy;
-    els.shareBtn.textContent = busy ? "…" : "↗ share";
+  // --- Unified share flow: pick format, then deliver by platform ---
+  //
+  // "share" opens a tiny popover with post/story. Once a format is picked,
+  // file-sharing support (navigator.canShare with an actual File, not UA
+  // sniffing) decides the path: mobile hands the PNG straight to the native
+  // share sheet; desktop reveals "save image" (download) + "copy link"
+  // (clipboard) in the same popover.
+
+  let pendingShareBlob = null;
+  let pendingShareFileName = null;
+
+  function supportsFileShare() {
+    if (!navigator.canShare) return false;
+    try {
+      const testFile = new File(["x"], "test.png", { type: "image/png" });
+      return navigator.canShare({ files: [testFile] });
+    } catch (e) {
+      return false;
+    }
   }
 
-  async function handleShare(format) {
-    if (state.todayMax === null) return;
+  function buildShareText() {
+    const todayText = state.todayMax !== null ? `${round(state.todayMax)}°` : "—";
+    const historyText = lastHistoryMax !== null && lastHistoryMax !== undefined ? `${round(lastHistoryMax)}°` : "—";
+    return `${todayText} today vs ${historyText} on this day in ${state.year} — whatweather.xyz`;
+  }
 
-    setShareBusy(true);
+  function setSharePanelStatus(text) {
+    els.sharePanelStatus.textContent = text || "";
+  }
+
+  function showShareFormats() {
+    els.shareFormats.hidden = false;
+    els.shareActions.hidden = true;
+    els.shareFormatPost.disabled = false;
+    els.shareFormatStory.disabled = false;
+  }
+
+  function showShareActions() {
+    els.shareFormats.hidden = true;
+    els.shareActions.hidden = false;
+  }
+
+  function openSharePanel() {
+    if (state.todayMax === null) return;
+    els.sharePanel.hidden = false;
+    els.shareBtn.setAttribute("aria-expanded", "true");
+    pendingShareBlob = null;
+    pendingShareFileName = null;
+    setSharePanelStatus("");
+    showShareFormats();
+    document.addEventListener("pointerdown", handleShareOutsideClick, true);
+    document.addEventListener("keydown", handleShareKeydown, true);
+  }
+
+  function closeSharePanel() {
+    if (els.sharePanel.hidden) return;
+    els.sharePanel.hidden = true;
+    els.shareBtn.setAttribute("aria-expanded", "false");
+    document.removeEventListener("pointerdown", handleShareOutsideClick, true);
+    document.removeEventListener("keydown", handleShareKeydown, true);
+    pendingShareBlob = null;
+    pendingShareFileName = null;
+  }
+
+  function handleShareOutsideClick(e) {
+    if (!els.shareControl.contains(e.target)) closeSharePanel();
+  }
+
+  function handleShareKeydown(e) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeSharePanel();
+      els.shareBtn.focus();
+    }
+  }
+
+  async function chooseShareFormat(format) {
     setNotice(els.shareNotice, null);
+    els.shareFormatPost.disabled = true;
+    els.shareFormatStory.disabled = true;
+    setSharePanelStatus("Generating…");
 
     try {
       const blob = await generateShareCard(format);
       const place = displayedPlaceName() || "location";
       const fileName = `whatweather-${slugify(place)}-${state.year}.png`;
-      const file = new File([blob], fileName, { type: "image/png" });
 
-      const todayText = state.todayMax !== null ? `${round(state.todayMax)}°` : "—";
-      const historyText = lastHistoryMax !== null && lastHistoryMax !== undefined ? `${round(lastHistoryMax)}°` : "—";
-      const shareText = `${todayText} today vs ${historyText} on this day in ${state.year} — whatweather.xyz`;
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (supportsFileShare()) {
+        const file = new File([blob], fileName, { type: "image/png" });
+        closeSharePanel();
         try {
           await navigator.share({
             files: [file],
             title: "what weather",
-            text: shareText,
+            text: buildShareText(),
             url: "https://whatweather.xyz",
           });
         } catch (err) {
@@ -763,18 +839,42 @@
           }
         }
       } else {
-        downloadBlob(blob, fileName);
+        pendingShareBlob = blob;
+        pendingShareFileName = fileName;
+        setSharePanelStatus("");
+        showShareActions();
       }
     } catch (e) {
-      setNotice(els.shareNotice, "Couldn't generate the share image.");
-    } finally {
-      setShareBusy(false);
+      setSharePanelStatus("Couldn't generate the share image.");
+      showShareFormats();
+    }
+  }
+
+  function saveGeneratedImage() {
+    if (!pendingShareBlob) return;
+    downloadBlob(pendingShareBlob, pendingShareFileName);
+    closeSharePanel();
+  }
+
+  async function copyShareLink() {
+    try {
+      await navigator.clipboard.writeText("https://whatweather.xyz");
+      setSharePanelStatus("copied");
+      setTimeout(() => setSharePanelStatus(""), 1500);
+    } catch (e) {
+      setSharePanelStatus("Couldn't copy.");
     }
   }
 
   function initShare() {
-    els.shareBtn.addEventListener("click", () => handleShare("post"));
-    els.shareStoryBtn.addEventListener("click", () => handleShare("story"));
+    els.shareBtn.addEventListener("click", () => {
+      if (els.sharePanel.hidden) openSharePanel();
+      else closeSharePanel();
+    });
+    els.shareFormatPost.addEventListener("click", () => chooseShareFormat("post"));
+    els.shareFormatStory.addEventListener("click", () => chooseShareFormat("story"));
+    els.saveImageBtn.addEventListener("click", saveGeneratedImage);
+    els.copyLinkBtn.addEventListener("click", copyShareLink);
   }
 
   function changeYear(newYear) {

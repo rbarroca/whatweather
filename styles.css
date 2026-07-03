@@ -349,8 +349,16 @@ button, select {
 }
 
 .footer-actions {
-  align-self: flex-start;
+  width: 100%;
   margin-top: clamp(0.5rem, 2vh, 1rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+}
+
+.footer-group {
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -383,6 +391,65 @@ button, select {
   color: var(--muted-dark);
   font-size: 0.85rem;
   opacity: 0.45;
+}
+
+/* Share panel */
+.share-control {
+  position: relative;
+}
+
+.share-panel {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 0.6rem;
+  z-index: 20;
+  min-width: 160px;
+  background: var(--ink);
+  color: var(--paper-warm);
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.share-panel__row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.share-panel__row[hidden] {
+  display: none;
+}
+
+.share-option {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.15rem 0;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.share-option:hover,
+.share-option:focus-visible {
+  opacity: 1;
+}
+
+.share-option:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.share-panel__status {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--muted-dark);
+  min-height: 1em;
 }
 
 .is-loading {

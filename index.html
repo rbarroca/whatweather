@@ -35,7 +35,8 @@
   "applicationCategory": "UtilityApplication",
   "operatingSystem": "Any (web)",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "description": "Compare today's temperature with the same calendar day in a past year, anywhere in the world."
+  "description": "Compare today's temperature with the same calendar day in a past year, anywhere in the world.",
+  "author": { "@type": "Person", "name": "Rui Barroca", "url": "https://www.ruibarroca.com" }
 }
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -110,13 +111,29 @@
       <div class="half__notice" id="historyNotice" hidden></div>
 
       <div class="footer-actions">
-        <button class="text-link" id="randomYear">&#8635; random year</button>
-        <span class="footer-sep" aria-hidden="true">&middot;</span>
-        <button class="text-link" id="shareBtn">&#8599; share</button>
-        <span class="footer-sep" aria-hidden="true">&middot;</span>
-        <button class="text-link" id="shareStoryBtn">story</button>
-        <span class="footer-sep" aria-hidden="true">&middot;</span>
-        <a class="text-link" href="/about">about</a>
+        <div class="footer-group">
+          <a class="text-link" href="/about">about</a>
+          <span class="footer-sep" aria-hidden="true">&middot;</span>
+          <div class="share-control" id="shareControl">
+            <button class="text-link" id="shareBtn" aria-haspopup="true" aria-expanded="false">share</button>
+            <div class="share-panel" id="sharePanel" hidden>
+              <div class="share-panel__row" id="shareFormats">
+                <button class="share-option" id="shareFormatPost" type="button">post</button>
+                <span class="footer-sep" aria-hidden="true">&middot;</span>
+                <button class="share-option" id="shareFormatStory" type="button">story</button>
+              </div>
+              <div class="share-panel__row" id="shareActions" hidden>
+                <button class="share-option" id="saveImageBtn" type="button">save image</button>
+                <span class="footer-sep" aria-hidden="true">&middot;</span>
+                <button class="share-option" id="copyLinkBtn" type="button">copy link</button>
+              </div>
+              <div class="share-panel__status" id="sharePanelStatus" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+        <div class="footer-group">
+          <button class="text-link" id="randomYear">&#8635; random year</button>
+        </div>
       </div>
       <div class="half__notice" id="shareNotice" hidden></div>
     </div>
