@@ -759,7 +759,7 @@
   function buildShareText() {
     const todayText = state.todayMax !== null ? `${round(state.todayMax)}°` : "—";
     const historyText = lastHistoryMax !== null && lastHistoryMax !== undefined ? `${round(lastHistoryMax)}°` : "—";
-    return `${todayText} today vs ${historyText} on this day in ${state.year} — whatweather.xyz`;
+    return `${todayText} today vs ${historyText} on this day in ${state.year}. whatweather.xyz`;
   }
 
   function setSharePanelStatus(text) {
@@ -831,7 +831,6 @@
             files: [file],
             title: "what weather",
             text: buildShareText(),
-            url: "https://whatweather.xyz",
           });
         } catch (err) {
           if (err && err.name !== "AbortError") {
