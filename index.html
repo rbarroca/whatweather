@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>what.weather</title>
-<meta name="description" content="Compare today's temperature with the same day in another year.">
+<title>what.weather — Compare Today's Temperature to Any Past Year</title>
+<meta name="description" content="Compare today's temperature with the same calendar day in a past year, anywhere in the world. Free, no sign-up.">
+<link rel="canonical" href="https://whatweather.xyz/">
 <meta property="og:title" content="what.weather">
-<meta property="og:description" content="Today's temperature vs. the same day in another year.">
+<meta property="og:description" content="Today's temperature vs. the same day in another year — anywhere in the world.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://whatweather.xyz">
 <meta property="og:image" content="https://whatweather.xyz/og-image.png">
@@ -16,18 +17,34 @@
 <meta name="twitter:title" content="what.weather">
 <meta name="twitter:description" content="Today's temperature vs. the same day in another year.">
 <meta name="twitter:image" content="https://whatweather.xyz/og-image.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "what.weather",
+  "url": "https://whatweather.xyz",
+  "applicationCategory": "UtilityApplication",
+  "operatingSystem": "Any (web)",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "description": "Compare today's temperature with the same calendar day in a past year, anywhere in the world."
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;600;700&family=Google+Sans+Code:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<h1 class="visually-hidden">what.weather — compare today's temperature with any past year</h1>
+<noscript>
+  <p class="noscript-notice">what.weather compares today's temperature with the same day in a past year. Enable JavaScript to use the app, or <a href="/about">read more on the about page</a>.</p>
+</noscript>
 <main class="app">
 
   <section class="half half--top" id="halfToday">
     <div class="half__inner">
       <header class="half__header">
-        <h1 class="half__label">Today</h1>
+        <h2 class="half__label">Today</h2>
         <div class="half__place" id="placeName">—</div>
       </header>
 
@@ -49,7 +66,7 @@
   <section class="half half--bottom" id="halfHistory">
     <div class="half__inner">
       <header class="half__header">
-        <h1 class="half__label">Same day</h1>
+        <h2 class="half__label">Same day</h2>
         <div class="year-control">
           <button class="year-arrow" id="yearPrev" aria-label="Previous year">&lsaquo;</button>
           <span class="year-current-wrap">
@@ -77,6 +94,8 @@
         <button class="text-link" id="shareBtn">&#8599; share</button>
         <span class="footer-sep" aria-hidden="true">&middot;</span>
         <button class="text-link" id="shareStoryBtn">story</button>
+        <span class="footer-sep" aria-hidden="true">&middot;</span>
+        <a class="text-link" href="/about">about</a>
       </div>
       <div class="half__notice" id="shareNotice" hidden></div>
     </div>

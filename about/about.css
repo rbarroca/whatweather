@@ -1,0 +1,123 @@
+:root {
+  --paper: #FFFFFF;
+  --ink: #0A0A0A;
+  --accent-hot: #EE4D1E;
+  --muted: rgba(0, 0, 0, .6);
+  --rule: rgba(0, 0, 0, .12);
+
+  --font: "Google Sans Flex", "Google Sans Code", "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.about__back {
+  display: inline-block;
+  margin: clamp(1.25rem, 4vw, 2.5rem) clamp(1.25rem, 4vw, 3.5rem) 0;
+}
+
+.about {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3rem) clamp(1.25rem, 4vw, 3.5rem) clamp(3rem, 8vw, 5rem);
+}
+
+.about__header h1 {
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0.5rem 0 1.25rem;
+}
+
+.about__lede {
+  font-size: 1.15rem;
+  font-weight: 400;
+  color: var(--ink);
+  max-width: 42rem;
+}
+
+.about__section {
+  margin-top: clamp(2.5rem, 6vw, 3.5rem);
+  padding-top: clamp(2.5rem, 6vw, 3.5rem);
+  border-top: 1px solid var(--rule);
+}
+
+.about__section h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+}
+
+.about__section p {
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+}
+
+.about__section ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.about__section li {
+  margin-bottom: 0.65rem;
+  font-size: 1.05rem;
+}
+
+.about__section a {
+  color: var(--accent-hot);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.faq-item {
+  margin-bottom: 1.75rem;
+}
+
+.faq-item h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.4rem;
+}
+
+.faq-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.02rem;
+}
+
+.about__footer {
+  margin-top: clamp(2.5rem, 6vw, 3.5rem);
+  padding-top: clamp(1.5rem, 4vw, 2.5rem);
+  border-top: 1px solid var(--rule);
+}
+
+.text-link {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.text-link:hover,
+.text-link:focus-visible {
+  opacity: 1;
+}
