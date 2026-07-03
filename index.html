@@ -14,19 +14,21 @@
 <main class="app">
 
   <section class="half half--top" id="halfToday">
-    <header class="half__header">
-      <h1 class="half__label">Today</h1>
-      <div class="half__place" id="placeName">—</div>
-    </header>
+    <div class="half__inner">
+      <header class="half__header">
+        <h1 class="half__label">Today</h1>
+        <div class="half__place" id="placeName">—</div>
+      </header>
 
-    <div class="half__body">
-      <div class="temp" id="todayTemp">
-        <span class="temp__value" id="todayMax">...</span><span class="temp__deg">°</span>
+      <div class="half__body">
+        <div class="temp" id="todayTemp">
+          <span class="temp__value" id="todayMax">...</span><span class="temp__deg">°</span>
+        </div>
+        <div class="temp__min" id="todayMin">&nbsp;</div>
       </div>
-      <div class="temp__min" id="todayMin">&nbsp;</div>
-    </div>
 
-    <div class="half__notice" id="todayNotice" hidden></div>
+      <div class="half__notice" id="todayNotice" hidden></div>
+    </div>
   </section>
 
   <div class="badge" id="diffBadge" hidden>
@@ -34,30 +36,32 @@
   </div>
 
   <section class="half half--bottom" id="halfHistory">
-    <header class="half__header">
-      <h1 class="half__label">Same day</h1>
-      <div class="year-control">
-        <button class="year-arrow" id="yearPrev" aria-label="Previous year">&lsaquo;</button>
-        <span class="year-current-wrap">
-          <button class="year-current" id="yearButton" aria-haspopup="listbox" aria-expanded="false">
-            <span id="yearValue">—</span>
-          </button>
-          <select class="year-select" id="yearSelect" aria-label="Choose year"></select>
-        </span>
-        <button class="year-arrow" id="yearNext" aria-label="Next year">&rsaquo;</button>
-      </div>
-    </header>
+    <div class="half__inner">
+      <header class="half__header">
+        <h1 class="half__label">Same day</h1>
+        <div class="year-control">
+          <button class="year-arrow" id="yearPrev" aria-label="Previous year">&lsaquo;</button>
+          <span class="year-current-wrap">
+            <button class="year-current" id="yearButton" aria-haspopup="listbox" aria-expanded="false">
+              <span id="yearValue">—</span>
+            </button>
+            <select class="year-select" id="yearSelect" aria-label="Choose year"></select>
+          </span>
+          <button class="year-arrow" id="yearNext" aria-label="Next year">&rsaquo;</button>
+        </div>
+      </header>
 
-    <div class="half__body">
-      <div class="temp" id="historyTemp">
-        <span class="temp__value" id="historyMax">...</span><span class="temp__deg">°</span>
+      <div class="half__body">
+        <div class="temp" id="historyTemp">
+          <span class="temp__value" id="historyMax">...</span><span class="temp__deg">°</span>
+        </div>
+        <div class="temp__min" id="historyMin">&nbsp;</div>
       </div>
-      <div class="temp__min" id="historyMin">&nbsp;</div>
+
+      <div class="half__notice" id="historyNotice" hidden></div>
+
+      <button class="random-year" id="randomYear">&#8635; random year</button>
     </div>
-
-    <div class="half__notice" id="historyNotice" hidden></div>
-
-    <button class="random-year" id="randomYear">&#8635; random year</button>
   </section>
 
 </main>
