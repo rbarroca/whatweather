@@ -759,7 +759,9 @@
   function buildShareText() {
     const todayText = state.todayMax !== null ? `${round(state.todayMax)}°` : "—";
     const historyText = lastHistoryMax !== null && lastHistoryMax !== undefined ? `${round(lastHistoryMax)}°` : "—";
-    return `${todayText} today vs ${historyText} on this day in ${state.year}. whatweather.xyz`;
+    const place = displayedPlaceName().trim();
+    const placePrefix = place ? `${place} ` : "";
+    return `${placePrefix}${todayText} today vs ${historyText} on this day in ${state.year}. whatweather.xyz`;
   }
 
   function setSharePanelStatus(text) {
