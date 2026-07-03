@@ -3,6 +3,12 @@
   command = ""
 
 [[redirects]]
+  from = "https://appwhatweather.netlify.app/*"
+  to = "https://whatweather.xyz/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/about"
   to = "/about/index.html"
   status = 200
