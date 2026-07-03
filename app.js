@@ -137,8 +137,11 @@
         loadToday();
         loadHistory();
       },
-      () => {
-        useFallback("Location denied.");
+      (err) => {
+        let reason = "Location unavailable.";
+        if (err && err.code === 1) reason = "Location blocked in browser settings.";
+        else if (err && err.code === 3) reason = "Location request timed out.";
+        useFallback(reason);
       },
       { timeout: 8000 }
     );
@@ -148,7 +151,9 @@
     state.lat = FALLBACK.lat;
     state.lon = FALLBACK.lon;
     els.placeName.textContent = FALLBACK.name;
-    setNotice(els.todayNotice, `${reason} Using ${FALLBACK.name}.`);
+    setNotice(els.todayNotice, retryButton(`${reason} Using ${FALLBACK.name}.`, () => {
+      locate();
+    }));
     loadToday();
     loadHistory();
   }
