@@ -26,6 +26,7 @@
     diffValue: document.getElementById("diffValue"),
     shareControl: document.getElementById("shareControl"),
     shareBtn: document.getElementById("shareBtn"),
+    shareBackdrop: document.getElementById("shareBackdrop"),
     sharePanel: document.getElementById("sharePanel"),
     shareFormats: document.getElementById("shareFormats"),
     shareFormatPost: document.getElementById("shareFormatPost"),
@@ -768,6 +769,19 @@
     els.sharePanelStatus.textContent = text || "";
   }
 
+  function isMobileShareLayout() {
+    return window.matchMedia("(max-width: 768px)").matches;
+  }
+
+  function getVisibleShareItems() {
+    return Array.from(els.sharePanel.querySelectorAll(".share-menu__row:not([hidden]) .share-menu__item:not(:disabled)"));
+  }
+
+  function focusFirstShareItem() {
+    const items = getVisibleShareItems();
+    if (items[0]) items[0].focus();
+  }
+
   function showShareFormats() {
     els.shareFormats.hidden = false;
     els.shareActions.hidden = true;
@@ -778,39 +792,61 @@
   function showShareActions() {
     els.shareFormats.hidden = true;
     els.shareActions.hidden = false;
+    focusFirstShareItem();
   }
 
   function openSharePanel() {
     if (state.todayMax === null) return;
     els.sharePanel.hidden = false;
     els.shareBtn.setAttribute("aria-expanded", "true");
+    if (isMobileShareLayout()) els.shareBackdrop.hidden = false;
     pendingShareBlob = null;
     pendingShareFileName = null;
     setSharePanelStatus("");
     showShareFormats();
+    focusFirstShareItem();
     document.addEventListener("pointerdown", handleShareOutsideClick, true);
-    document.addEventListener("keydown", handleShareKeydown, true);
   }
 
   function closeSharePanel() {
     if (els.sharePanel.hidden) return;
     els.sharePanel.hidden = true;
+    els.shareBackdrop.hidden = true;
     els.shareBtn.setAttribute("aria-expanded", "false");
     document.removeEventListener("pointerdown", handleShareOutsideClick, true);
-    document.removeEventListener("keydown", handleShareKeydown, true);
     pendingShareBlob = null;
     pendingShareFileName = null;
+    els.shareBtn.focus();
   }
 
   function handleShareOutsideClick(e) {
     if (!els.shareControl.contains(e.target)) closeSharePanel();
   }
 
-  function handleShareKeydown(e) {
+  function handleShareMenuKeydown(e) {
     if (e.key === "Escape") {
       e.preventDefault();
       closeSharePanel();
-      els.shareBtn.focus();
+      return;
+    }
+
+    const items = getVisibleShareItems();
+    if (items.length === 0) return;
+    const currentIndex = items.indexOf(document.activeElement);
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      items[(currentIndex + 1 + items.length) % items.length].focus();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      items[(currentIndex - 1 + items.length) % items.length].focus();
+    } else if (e.key === "Tab") {
+      // Trap focus within the menu's visible items while open.
+      e.preventDefault();
+      const nextIndex = e.shiftKey
+        ? (currentIndex - 1 + items.length) % items.length
+        : (currentIndex + 1) % items.length;
+      items[nextIndex].focus();
     }
   }
 
@@ -848,6 +884,7 @@
     } catch (e) {
       setSharePanelStatus("Couldn't generate the share image.");
       showShareFormats();
+      focusFirstShareItem();
     }
   }
 
@@ -872,6 +909,8 @@
       if (els.sharePanel.hidden) openSharePanel();
       else closeSharePanel();
     });
+    els.sharePanel.addEventListener("keydown", handleShareMenuKeydown);
+    els.shareBackdrop.addEventListener("click", closeSharePanel);
     els.shareFormatPost.addEventListener("click", () => chooseShareFormat("post"));
     els.shareFormatStory.addEventListener("click", () => chooseShareFormat("story"));
     els.saveImageBtn.addEventListener("click", saveGeneratedImage);

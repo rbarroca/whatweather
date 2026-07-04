@@ -393,63 +393,111 @@ button, select {
   opacity: 0.45;
 }
 
-/* Share panel */
+/* Share menu (shadcn-style dropdown / bottom sheet, pure CSS) */
 .share-control {
   position: relative;
 }
 
-.share-panel {
+.share-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, .35);
+}
+
+.share-backdrop[hidden] {
+  display: none;
+}
+
+.share-menu {
   position: absolute;
   bottom: 100%;
   left: 0;
   margin-bottom: 0.6rem;
-  z-index: 20;
-  min-width: 160px;
-  background: var(--ink);
-  color: var(--paper-warm);
-  border: 1px solid rgba(255, 255, 255, .18);
-  border-radius: 10px;
-  padding: 0.65rem 0.8rem;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  z-index: 50;
+  min-width: 180px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid rgba(0, 0, 0, .08);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+  padding: 6px;
+  font-size: 0.95rem;
 }
 
-.share-panel__row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.share-panel__row[hidden] {
+.share-menu[hidden] {
   display: none;
 }
 
-.share-option {
+.share-menu__row {
+  display: flex;
+  flex-direction: column;
+}
+
+.share-menu__row[hidden] {
+  display: none;
+}
+
+.share-menu__item {
+  display: block;
+  width: 100%;
+  text-align: left;
   background: none;
   border: none;
   color: inherit;
   font: inherit;
-  font-size: 0.85rem;
+  padding: 10px 14px;
+  border-radius: 8px;
   cursor: pointer;
-  padding: 0.15rem 0;
-  opacity: 0.85;
-  transition: opacity 0.15s ease;
+  transition: background-color 0.12s ease;
 }
 
-.share-option:hover,
-.share-option:focus-visible {
-  opacity: 1;
+.share-menu__item:hover,
+.share-menu__item:focus-visible,
+.share-menu__item.is-active {
+  background: rgba(0, 0, 0, .06);
+  outline: none;
 }
 
-.share-option:disabled {
-  opacity: 0.35;
+.share-menu__item:disabled {
+  opacity: 0.4;
   cursor: default;
+  background: none;
 }
 
-.share-panel__status {
-  margin-top: 0.35rem;
+.share-menu__status {
+  padding: 4px 14px 2px;
   font-size: 0.78rem;
-  color: var(--muted-dark);
+  color: var(--muted);
   min-height: 1em;
+}
+
+/* Mobile: bottom sheet instead of anchored popover */
+@media (max-width: 768px) {
+  .share-menu {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin-bottom: 0;
+    min-width: 0;
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    padding: 10px 8px calc(env(safe-area-inset-bottom, 0px) + 10px);
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, .25);
+    animation: share-sheet-in 0.2s ease-out;
+  }
+
+  .share-menu__item {
+    padding: 14px 16px;
+    font-size: 1.05rem;
+    min-height: 44px;
+  }
+}
+
+@keyframes share-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
 .is-loading {
