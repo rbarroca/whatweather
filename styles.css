@@ -562,3 +562,24 @@ button, select {
     font-size: clamp(8rem, 40vw, 12rem);
   }
 }
+
+/* Landscape phones (and short, wide desktop windows). The portrait number
+   scale is width-driven and height-blind, so on a short viewport the number
+   fills the whole half and collides with the label, the min line and the
+   footer. Size it to the available height instead, and tighten the vertical
+   padding, so each half comfortably contains its content. Portrait and taller
+   viewports are unaffected. */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root {
+    --pad-y: 0.9rem;
+  }
+
+  .temp__value,
+  .temp__deg {
+    font-size: clamp(2.5rem, 20vh, 6rem);
+  }
+
+  .temp__min {
+    margin-top: 0.35rem;
+  }
+}
