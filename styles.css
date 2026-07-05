@@ -21,6 +21,7 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
+  overflow-x: hidden; /* never allow horizontal scroll in any state */
 }
 
 body {
@@ -37,8 +38,13 @@ button, select {
   position: relative;
   display: grid;
   grid-template-rows: 1fr 1fr;
-  height: 100dvh;
+  /* svh is the small (address-bar-shown) viewport height and, unlike dvh, does
+     not shrink when the mobile keyboard opens — so focusing the city search
+     no longer compresses the 50/50 split. 100vh is the fallback for old UAs. */
+  height: 100vh;
+  height: 100svh;
   width: 100%;
+  max-width: 100%;
 }
 
 .half {
@@ -136,7 +142,9 @@ button, select {
 .place-input {
   width: 100%;
   font: inherit;
-  font-size: 0.95rem;
+  /* 16px (not smaller) stops iOS Safari from auto-zooming on focus, which was
+     shifting the viewport right and clipping the left-edge labels. */
+  font-size: 16px;
   color: inherit;
   background: none;
   border: none;
