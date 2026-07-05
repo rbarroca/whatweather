@@ -8,7 +8,7 @@
   --muted: rgba(0, 0, 0, .55);
   --muted-dark: rgba(255, 255, 255, .55);
 
-  --font: "Google Sans Flex", "Google Sans Code", "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font: "Google Sans Flex", "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --pad-x: clamp(1.25rem, 4vw, 3.5rem);
   --pad-y: clamp(1.25rem, 4vh, 3rem);
 }
@@ -456,7 +456,11 @@ button, select {
 .share-menu__item:focus-visible,
 .share-menu__item.is-active {
   background: rgba(0, 0, 0, .06);
-  outline: none;
+}
+
+.share-menu__item:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 .share-menu__item:disabled {

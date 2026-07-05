@@ -585,7 +585,7 @@
 
   // --- Share card generation ---
 
-  const CARD_FONT = '"Google Sans Flex", "Google Sans Code", "Inter", system-ui, sans-serif';
+  const CARD_FONT = '"Google Sans Flex", "Inter", system-ui, sans-serif';
   const CARD_FORMATS = {
     post: { w: 1080, h: 1350 },
     story: { w: 1080, h: 1920 },
@@ -776,11 +776,16 @@
     }
   }
 
+  // Sentinel place labels that shouldn't be used as a share-text prefix:
+  // the loading state, the generic reverse-geocode fallback, and the empty
+  // dash. In those cases the text starts straight on the number.
+  const NON_PLACE_LABELS = new Set(["", "—", "your location", "Locating…"]);
+
   function buildShareText() {
     const todayText = state.todayMax !== null ? `${round(state.todayMax)}°` : "—";
     const historyText = lastHistoryMax !== null && lastHistoryMax !== undefined ? `${round(lastHistoryMax)}°` : "—";
     const place = displayedPlaceName().trim();
-    const placePrefix = place ? `${place} ` : "";
+    const placePrefix = NON_PLACE_LABELS.has(place) ? "" : `${place} `;
     return `${placePrefix}${todayText} today vs ${historyText} on this day in ${state.year}. whatweather.xyz`;
   }
 
