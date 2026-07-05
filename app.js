@@ -479,12 +479,20 @@
     els.useLocationBtn.addEventListener("click", useMyLocation);
   }
 
+  // Each loader keeps its own request sequence so a superseded (older)
+  // response can never overwrite a newer one — a slow fetch for the previous
+  // city or year landing last would otherwise display its data under the new
+  // city/year label.
+  let todayLoadSeq = 0;
+
   async function loadToday() {
+    const seq = ++todayLoadSeq;
     els.todayMax.textContent = "...";
     els.todayMin.innerHTML = "&nbsp;";
     try {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${state.lat}&longitude=${state.lon}&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1`;
       const data = await fetchJSON(url);
+      if (seq !== todayLoadSeq) return;
       const max = data.daily.temperature_2m_max[0];
       const min = data.daily.temperature_2m_min[0];
       const now = new Date();
@@ -501,6 +509,9 @@
       els.todayMin.textContent = `min ${round(min)}°`;
       updateBadge(currentHistoryMax());
     } catch (e) {
+      if (seq !== todayLoadSeq) return;
+      state.todayMax = null;
+      state.todayMin = null;
       els.todayMax.textContent = "—";
       els.todayMin.innerHTML = "&nbsp;";
       setNotice(els.todayNotice, retryButton("Couldn't load today's weather.", () => {
@@ -515,7 +526,11 @@
     return lastHistoryMax;
   }
 
+  let historyLoadSeq = 0;
+
   async function loadHistory() {
+    const seq = ++historyLoadSeq;
+
     if (state.mm === null) {
       const now = new Date();
       state.mm = pad(now.getMonth() + 1);
@@ -533,6 +548,7 @@
     try {
       const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${state.lat}&longitude=${state.lon}&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
       const data = await fetchJSON(url);
+      if (seq !== historyLoadSeq) return;
       const max = data.daily.temperature_2m_max[0];
       const min = data.daily.temperature_2m_min[0];
 
@@ -551,6 +567,7 @@
         updateBadge(max);
       }
     } catch (e) {
+      if (seq !== historyLoadSeq) return;
       lastHistoryMax = null;
       state.historyMin = null;
       els.historyMax.textContent = "—";
@@ -560,7 +577,9 @@
       }));
       els.badge.hidden = true;
     } finally {
-      els.historyBody.classList.remove("is-loading");
+      if (seq === historyLoadSeq) {
+        els.historyBody.classList.remove("is-loading");
+      }
     }
   }
 
