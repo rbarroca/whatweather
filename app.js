@@ -1,11 +1,21 @@
 (() => {
   "use strict";
 
-  const FALLBACK = { lat: 38.7223, lon: -9.1393, name: "Lisbon" };
+  const FALLBACK = { lat: 38.7223, lon: -9.1393, name: "Lisbon", countryCode: "PT" };
   const MIN_YEAR = 1960;
   const CURRENT_YEAR = new Date().getFullYear();
   const MAX_HISTORY_YEAR = CURRENT_YEAR - 1;
   const LOCATION_STORAGE_KEY = "ww_saved_city";
+  const UNIT_STORAGE_KEY = "ww_unit";
+
+  // Countries/territories served by the US National Weather Service, which
+  // report in Fahrenheit. Everywhere else defaults to Celsius. Most IP
+  // providers already fold US territories into "US"; the rest are the safety
+  // net. A user in the few other °F-leaning places (Bahamas, Cayman, …) flips
+  // once with the toggle and it's remembered.
+  const FAHRENHEIT_COUNTRIES = new Set([
+    "US", "PR", "GU", "VI", "AS", "MP", "PW", "FM", "MH",
+  ]);
 
   const els = {
     placeName: document.getElementById("placeName"),
@@ -43,6 +53,7 @@
     placeResults: document.getElementById("placeResults"),
     placeStatus: document.getElementById("placeStatus"),
     useLocationBtn: document.getElementById("useLocationBtn"),
+    unitToggle: document.getElementById("unitToggle"),
   };
 
   const state = {
@@ -54,6 +65,8 @@
     todayMin: null,
     historyMin: null,
     year: randomYear(),
+    unit: getSavedUnit() || "C", // "C" or "F"; refined per location on load
+    countryCode: null,
   };
 
   function randomYear() {
@@ -198,6 +211,69 @@
     }
   }
 
+  // --- Temperature unit (°C / °F) ---
+
+  function getSavedUnit() {
+    try {
+      const u = localStorage.getItem(UNIT_STORAGE_KEY);
+      return u === "C" || u === "F" ? u : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveUnit(u) {
+    try {
+      localStorage.setItem(UNIT_STORAGE_KEY, u);
+    } catch (e) {
+      /* localStorage unavailable */
+    }
+  }
+
+  function defaultUnitForCountry(code) {
+    return code && FAHRENHEIT_COUNTRIES.has(code) ? "F" : "C";
+  }
+
+  // The manually saved unit always wins; otherwise the country decides.
+  function resolveUnit(countryCode) {
+    return getSavedUnit() || defaultUnitForCountry(countryCode);
+  }
+
+  function apiUnitParam() {
+    return state.unit === "F" ? "fahrenheit" : "celsius";
+  }
+
+  function unitLetter() {
+    return state.unit === "F" ? "F" : "C";
+  }
+
+  function syncUnitUI() {
+    els.unitToggle.textContent = `°${unitLetter()}`;
+  }
+
+  // Apply the unit for a freshly resolved location. Sets country + unit and
+  // syncs the toggle. Returns true if it changed the unit from what was
+  // active (so a caller that already loaded can decide to refetch).
+  function applyLocationUnit(countryCode) {
+    state.countryCode = countryCode || null;
+    const next = resolveUnit(countryCode);
+    const changed = next !== state.unit;
+    state.unit = next;
+    syncUnitUI();
+    return changed;
+  }
+
+  function initUnitToggle() {
+    syncUnitUI();
+    els.unitToggle.addEventListener("click", () => {
+      state.unit = state.unit === "C" ? "F" : "C";
+      saveUnit(state.unit);
+      syncUnitUI();
+      loadToday();
+      loadHistory();
+    });
+  }
+
   function locate() {
     const token = beginLocationUpdate();
     setNotice(els.todayNotice, null);
@@ -222,6 +298,10 @@
         const lon = Number(pos.coords.longitude.toFixed(3));
         state.lat = lat;
         state.lon = lon;
+        // Provisional unit (saved preference, else Celsius) until reverse
+        // geocoding resolves the country; resolvePlaceName reconciles it.
+        state.unit = getSavedUnit() || "C";
+        syncUnitUI();
         resolvePlaceName(lat, lon, token);
         loadToday();
         loadHistory();
@@ -248,7 +328,7 @@
     try {
       const loc = await fetchIpLocation("https://ipwho.is/", (d) =>
         d && d.success === true && Number.isFinite(d.latitude) && Number.isFinite(d.longitude)
-          ? { lat: d.latitude, lon: d.longitude, city: d.city }
+          ? { lat: d.latitude, lon: d.longitude, city: d.city, countryCode: (d.country_code || "").toUpperCase() }
           : null
       );
       if (isStale(token)) return;
@@ -261,7 +341,7 @@
     try {
       const loc = await fetchIpLocation("https://ipapi.co/json/", (d) =>
         d && !d.error && Number.isFinite(d.latitude) && Number.isFinite(d.longitude)
-          ? { lat: d.latitude, lon: d.longitude, city: d.city }
+          ? { lat: d.latitude, lon: d.longitude, city: d.city, countryCode: (d.country_code || "").toUpperCase() }
           : null
       );
       if (isStale(token)) return;
@@ -278,6 +358,7 @@
   function useIpLocation(loc) {
     state.lat = Number(loc.lat.toFixed(3));
     state.lon = Number(loc.lon.toFixed(3));
+    applyLocationUnit(loc.countryCode);
     setPlaceName(loc.city || "your location", true);
     loadToday();
     loadHistory();
@@ -286,6 +367,7 @@
   function useSavedCity(loc) {
     state.lat = loc.lat;
     state.lon = loc.lon;
+    applyLocationUnit(loc.countryCode);
     setPlaceName(loc.name, false);
     loadToday();
     loadHistory();
@@ -294,6 +376,7 @@
   function useFallback(reason) {
     state.lat = FALLBACK.lat;
     state.lon = FALLBACK.lon;
+    applyLocationUnit(FALLBACK.countryCode);
     setPlaceName(FALLBACK.name, false);
     setNotice(els.todayNotice, retryButton(`${reason} Using ${FALLBACK.name} (approximate).`, () => {
       locate();
@@ -313,6 +396,14 @@
         (data.display_name ? data.display_name.split(",")[0] : null) ||
         "your location";
       setPlaceName(name, false);
+      // The GPS path fires temps with a provisional unit before the country is
+      // known; reverse geocoding tells us the country, so refetch if that flips
+      // the unit (e.g. a US visitor who had no saved preference).
+      const cc = (addr.country_code || "").toUpperCase();
+      if (applyLocationUnit(cc)) {
+        loadToday();
+        loadHistory();
+      }
     } catch (e) {
       if (isStale(token)) return;
       setPlaceName("your location", false);
@@ -331,10 +422,12 @@
     beginLocationUpdate(); // invalidate any auto-detect cascade still in flight
     const lat = Number(result.latitude.toFixed(3));
     const lon = Number(result.longitude.toFixed(3));
+    const countryCode = (result.country_code || "").toUpperCase();
     state.lat = lat;
     state.lon = lon;
+    applyLocationUnit(countryCode);
     setPlaceName(result.name, false);
-    saveCity({ name: result.name, lat, lon, country: result.country || "" });
+    saveCity({ name: result.name, lat, lon, country: result.country || "", countryCode });
     closePlacePanel();
     els.placeButton.focus();
     loadToday();
@@ -490,7 +583,7 @@
     els.todayMax.textContent = "...";
     els.todayMin.innerHTML = "&nbsp;";
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${state.lat}&longitude=${state.lon}&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${state.lat}&longitude=${state.lon}&daily=temperature_2m_max,temperature_2m_min&temperature_unit=${apiUnitParam()}&timezone=auto&forecast_days=1`;
       const data = await fetchJSON(url);
       if (seq !== todayLoadSeq) return;
       const max = data.daily.temperature_2m_max[0];
@@ -546,7 +639,7 @@
     const dateStr = `${state.year}-${state.mm}-${state.dd}`;
 
     try {
-      const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${state.lat}&longitude=${state.lon}&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
+      const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${state.lat}&longitude=${state.lon}&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_max,temperature_2m_min&temperature_unit=${apiUnitParam()}&timezone=auto`;
       const data = await fetchJSON(url);
       if (seq !== historyLoadSeq) return;
       const max = data.daily.temperature_2m_max[0];
@@ -696,6 +789,7 @@
 
     const cleanPlace = displayedPlaceName();
     const place = cleanPlace && cleanPlace !== "—" ? cleanPlace : "your location";
+    const u = unitLetter();
 
     drawCardHalf(ctx, {
       top: 0,
@@ -708,7 +802,7 @@
       label: "Today",
       corner: place,
       bigText: state.todayMax !== null ? String(round(state.todayMax)) : "—",
-      minText: state.todayMin !== null ? `min ${round(state.todayMin)}°` : "",
+      minText: state.todayMin !== null ? `min ${round(state.todayMin)}°${u}` : "",
     });
 
     drawCardHalf(ctx, {
@@ -722,7 +816,7 @@
       label: "Same day",
       corner: String(state.year),
       bigText: lastHistoryMax !== null ? String(round(lastHistoryMax)) : "—",
-      minText: state.historyMin !== null ? `min ${round(state.historyMin)}°` : "",
+      minText: state.historyMin !== null ? `min ${round(state.historyMin)}°${u}` : "",
     });
 
     const diffResult = computeDiff(state.todayMax, lastHistoryMax);
@@ -782,8 +876,9 @@
   const NON_PLACE_LABELS = new Set(["", "—", "your location", "Locating…"]);
 
   function buildShareText() {
-    const todayText = state.todayMax !== null ? `${round(state.todayMax)}°` : "—";
-    const historyText = lastHistoryMax !== null && lastHistoryMax !== undefined ? `${round(lastHistoryMax)}°` : "—";
+    const u = unitLetter();
+    const todayText = state.todayMax !== null ? `${round(state.todayMax)}°${u}` : "—";
+    const historyText = lastHistoryMax !== null && lastHistoryMax !== undefined ? `${round(lastHistoryMax)}°${u}` : "—";
     const place = displayedPlaceName().trim();
     const placePrefix = NON_PLACE_LABELS.has(place) ? "" : `${place} `;
     return `${placePrefix}${todayText} today vs ${historyText} on this day in ${state.year}. whatweather.xyz`;
@@ -987,5 +1082,6 @@
   initYearControls();
   initShare();
   initPlaceSearch();
+  initUnitToggle();
   locate();
 })();
